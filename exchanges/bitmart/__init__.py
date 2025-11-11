@@ -1,18 +1,20 @@
-from exchanges._base_ import BaseClient
-import pandas as pd
-from constants import SymbolStatus
-from utils import precision, to_decimal_str
 from decimal import Decimal
+from typing import ClassVar
+
+from constants import InstType, SymbolStatus
+from utils import precision, to_decimal_str
+
+from exchanges._base_ import BaseClient
 
 
 class BitmartSpotClient(BaseClient):
     """https://developer-pro.bitmart.com/en/spot/#public-market-data"""
 
-    exchange_id = 1005
-    inst_type = 0
+    exchange_name = "bitmart"
+    inst_type = InstType.SPOT
     base_url = "https://api-cloud.bitmart.com/spot"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         "trading": SymbolStatus.ACTIVE,
         "pre-trade": SymbolStatus.PENDING,
     }
@@ -44,17 +46,17 @@ class BitmartSpotClient(BaseClient):
                     "quantity_precision": precision(sym["base_min_size"]),
                 }
             )
-        return pd.DataFrame(rows)
+        return rows
 
 
 class BitmartPerpClient(BaseClient):
     """https://developer-pro.bitmart.com/en/futuresv2/"""
 
-    exchange_id = 1005
-    inst_type = 1
+    exchange_name = "bitmart"
+    inst_type = InstType.PERP
     base_url = "https://api-cloud-v2.bitmart.com"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         "Trading": SymbolStatus.ACTIVE,
         "Delisted": SymbolStatus.PENDING,
     }
@@ -69,9 +71,7 @@ class BitmartPerpClient(BaseClient):
         data = await self.get_exchange_info()
         rows = []
         for sym in data["data"]["symbols"]:
-            actual_step_size = Decimal(sym["vol_precision"]) * Decimal(
-                sym["contract_size"]
-            )
+            actual_step_size = Decimal(sym["vol_precision"]) * Decimal(sym["contract_size"])
 
             rows.append(
                 {
@@ -87,4 +87,4 @@ class BitmartPerpClient(BaseClient):
                     "quantity_precision": precision(actual_step_size),
                 }
             )
-        return pd.DataFrame(rows)
+        return rows

@@ -1,17 +1,19 @@
-from exchanges._base_ import BaseClient
-import pandas as pd
-from constants import SymbolStatus
+from typing import ClassVar
+
+from constants import InstType, SymbolStatus
 from utils import precision
+
+from exchanges._base_ import BaseClient
 
 
 class OkxSpotClient(BaseClient):
     """https://www.okx.com/docs-v5/en/#public-data"""
 
-    exchange_id = 1001
-    inst_type = 0
+    exchange_name = "okx"
+    inst_type = InstType.SPOT
     base_url = "https://www.okx.com/api"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         "live": SymbolStatus.ACTIVE,
         "suspend": SymbolStatus.HALTED,
         "preopen": SymbolStatus.PENDING,
@@ -44,17 +46,17 @@ class OkxSpotClient(BaseClient):
                     "onboard_time": sym["listTime"],
                 }
             )
-        return pd.DataFrame(rows)
+        return rows
 
 
 class OkxPerpClient(BaseClient):
     """https://www.okx.com/docs-v5/en/#public-data"""
 
-    exchange_id = 1001
-    inst_type = 1
+    exchange_name = "okx"
+    inst_type = InstType.PERP
     base_url = "https://www.okx.com/api"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         "live": SymbolStatus.ACTIVE,
         "suspend": SymbolStatus.HALTED,
         "preopen": SymbolStatus.PENDING,
@@ -88,4 +90,4 @@ class OkxPerpClient(BaseClient):
                     "onboard_time": sym["listTime"],
                 }
             )
-        return pd.DataFrame(rows)
+        return rows

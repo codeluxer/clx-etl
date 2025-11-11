@@ -1,17 +1,19 @@
-from exchanges._base_ import BaseClient
-import pandas as pd
-from constants import SymbolStatus
+from typing import ClassVar
+
+from constants import InstType, SymbolStatus
 from utils import precision
+
+from exchanges._base_ import BaseClient
 
 
 class WooxSpotClient(BaseClient):
     """https://docs.woox.io/#general-information"""
 
-    exchange_id = 1009
-    inst_type = 0
+    exchange_name = "woox"
+    inst_type = InstType.SPOT
     base_url = "https://api.woox.io"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         "TRADING": SymbolStatus.ACTIVE,
         "SUSPENDED": SymbolStatus.HALTED,
     }
@@ -45,17 +47,17 @@ class WooxSpotClient(BaseClient):
                         "onboard_time": float(sym["listing_time"]) * 1000,
                     }
                 )
-        return pd.DataFrame(rows)
+        return rows
 
 
 class WooxPerpClient(BaseClient):
     """https://docs.woox.io/#general-information"""
 
-    exchange_id = 1009
-    inst_type = 1
+    exchange_name = "woox"
+    inst_type = InstType.PERP
     base_url = "https://api.woox.io"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         "live": SymbolStatus.ACTIVE,
         "suspend": SymbolStatus.HALTED,
         "preopen": SymbolStatus.PENDING,
@@ -90,4 +92,4 @@ class WooxPerpClient(BaseClient):
                         "onboard_time": float(sym["listing_time"]) * 1000,
                     }
                 )
-        return pd.DataFrame(rows)
+        return rows

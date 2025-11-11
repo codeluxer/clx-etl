@@ -1,16 +1,18 @@
+from typing import ClassVar
+
+from constants import InstType, SymbolStatus
+
 from exchanges._base_ import BaseClient
-import pandas as pd
-from constants import SymbolStatus
 
 
 class MexcSpotClient(BaseClient):
     """https://www.mexc.com/api-docs/spot-v3/introduction"""
 
-    exchange_id = 1008
-    inst_type = 0
+    exchange_name = "mexc"
+    inst_type = InstType.SPOT
     base_url = "https://api.mexc.com/api"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         "1": SymbolStatus.ACTIVE,
         "2": SymbolStatus.HALTED,
         "3": SymbolStatus.CLOSED,
@@ -41,17 +43,17 @@ class MexcSpotClient(BaseClient):
                     "quantity_precision": sym["baseAssetPrecision"],
                 }
             )
-        return pd.DataFrame(rows)
+        return rows
 
 
 class MexcPerpClient(BaseClient):
     """https://www.mexc.com/api-docs/futures/update-log"""
 
-    exchange_id = 1008
-    inst_type = 1
+    exchange_name = "mexc"
+    inst_type = InstType.PERP
     base_url = "https://contract.mexc.com/api"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         0: SymbolStatus.ACTIVE,
         1: SymbolStatus.HALTED,
         2: SymbolStatus.CLOSED,
@@ -84,4 +86,4 @@ class MexcPerpClient(BaseClient):
                     "onboard_time": sym["openingTime"] * 1000,
                 }
             )
-        return pd.DataFrame(rows)
+        return rows

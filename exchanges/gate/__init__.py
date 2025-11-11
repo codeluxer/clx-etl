@@ -1,17 +1,19 @@
-from exchanges._base_ import BaseClient
-import pandas as pd
-from constants import SymbolStatus
+from typing import ClassVar
+
+from constants import InstType, SymbolStatus
 from utils import precision, to_decimal_str
+
+from exchanges._base_ import BaseClient
 
 
 class GateSpotClient(BaseClient):
     """https://www.gate.com/docs/developers/apiv4/zh_CN/"""
 
-    exchange_id = 1006
-    inst_type = 0
+    exchange_name = "gate"
+    inst_type = InstType.SPOT
     base_url = "https://api.gateio.ws/api/v4"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         "untradable": SymbolStatus.CLOSED,
         "buyable": SymbolStatus.ACTIVE,
         "sellable": SymbolStatus.ACTIVE,
@@ -44,17 +46,17 @@ class GateSpotClient(BaseClient):
                     "onboard_time": min(sym["sell_start"], sym["buy_start"]) * 1000,
                 }
             )
-        return pd.DataFrame(rows)
+        return rows
 
 
 class GatePerpClient(BaseClient):
     """https://www.gate.com/docs/developers/apiv4/zh_CN/#futures"""
 
-    exchange_id = 1006
-    inst_type = 1
+    exchange_name = "gate"
+    inst_type = InstType.PERP
     base_url = "https://api.gateio.ws/api/v4"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         "prelaunch": SymbolStatus.PENDING,
         "trading": SymbolStatus.ACTIVE,
         "delisting": SymbolStatus.HALTED,
@@ -88,4 +90,4 @@ class GatePerpClient(BaseClient):
                     "onboard_time": sym["launch_time"] * 1000,
                 }
             )
-        return pd.DataFrame(rows)
+        return rows

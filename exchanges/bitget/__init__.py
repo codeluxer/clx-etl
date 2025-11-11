@@ -1,17 +1,19 @@
-from exchanges._base_ import BaseClient
-import pandas as pd
-from constants import SymbolStatus
+from typing import ClassVar
+
+from constants import InstType, SymbolStatus
 from utils import precision
+
+from exchanges._base_ import BaseClient
 
 
 class BitgetSpotClient(BaseClient):
     """https://www.bitget.com/api-doc/spot/intro"""
 
-    exchange_id = 1004
-    inst_type = 0
+    exchange_name = "bitget"
+    inst_type = InstType.SPOT
     base_url = "https://api.bitget.com/api"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         "online": SymbolStatus.ACTIVE,
         "halt": SymbolStatus.HALTED,
         "gray": SymbolStatus.PENDING,
@@ -49,17 +51,17 @@ class BitgetSpotClient(BaseClient):
                     "quantity_precision": precision(step_size),
                 }
             )
-        return pd.DataFrame(rows)
+        return rows
 
 
 class BitgetPerpClient(BaseClient):
     """https://www.bitget.com/api-doc/contract/intro"""
 
-    exchange_id = 1004
-    inst_type = 1
+    exchange_name = "bitget"
+    inst_type = InstType.PERP
     base_url = "https://api.bitget.com/api"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         "normal": SymbolStatus.ACTIVE,
         "listed": SymbolStatus.PENDING,
         "maintain": SymbolStatus.HALTED,
@@ -92,4 +94,4 @@ class BitgetPerpClient(BaseClient):
                     "quantity_precision": sym["volumePlace"],
                 }
             )
-        return pd.DataFrame(rows)
+        return rows

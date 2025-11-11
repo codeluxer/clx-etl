@@ -1,16 +1,18 @@
+from typing import ClassVar
+
+from constants import InstType, SymbolStatus
+
 from exchanges._base_ import BaseClient
-import pandas as pd
-from constants import SymbolStatus
 
 
 class AsterPerpClient(BaseClient):
     """https://github.com/asterdex/api-docs/blob/master/aster-finance-futures-api-v3.md"""
 
-    exchange_id = 1003
-    inst_type = 1
+    exchange_name = "aster"
+    inst_type = InstType.PERP
     base_url = "https://fapi.asterdex.com"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         "TRADING": SymbolStatus.ACTIVE,
         "PENDING_TRADING": SymbolStatus.PENDING,
         "PRE_DELIVERING": SymbolStatus.HALTED,
@@ -51,4 +53,4 @@ class AsterPerpClient(BaseClient):
                     "quantity_precision": sym["quantityPrecision"],
                 }
             )
-        return pd.DataFrame(rows)
+        return rows

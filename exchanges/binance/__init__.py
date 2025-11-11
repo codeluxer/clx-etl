@@ -1,7 +1,9 @@
-from exchanges._base_ import BaseClient
-import pandas as pd
-from constants import SymbolStatus
+from typing import ClassVar
+
+from constants import InstType, SymbolStatus
 from utils import precision
+
+from exchanges._base_ import BaseClient
 
 
 def get_price_precision(filters) -> int:
@@ -19,11 +21,11 @@ def get_quantity_precision(filters) -> int:
 class BinanceSpotClient(BaseClient):
     """https://developers.binance.com/docs/binance-spot-api-docs"""
 
-    exchange_id = 1001
-    inst_type = 0
+    exchange_name = "binance"
+    inst_type = InstType.SPOT
     base_url = "https://api.binance.com"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         "TRADING": SymbolStatus.ACTIVE,
         "END_OF_DAY": SymbolStatus.CLOSED,
         "HALT": SymbolStatus.HALTED,
@@ -61,17 +63,17 @@ class BinanceSpotClient(BaseClient):
                     "quantity_precision": precision(step),
                 }
             )
-        return pd.DataFrame(rows)
+        return rows
 
 
 class BinancePerpClient(BaseClient):
     """https://developers.binance.com/docs/derivatives/usds-margined-futures/general-info"""
 
-    exchange_id = 1001
-    inst_type = 1
+    exchange_name = "binance"
+    inst_type = InstType.PERP
     base_url = "https://fapi.binance.com"
 
-    status_map = {
+    status_map: ClassVar[dict[str, SymbolStatus]] = {
         "TRADING": SymbolStatus.ACTIVE,
         "PENDING_TRADING": SymbolStatus.PENDING,
         "PRE_DELIVERING": SymbolStatus.HALTED,
@@ -112,4 +114,4 @@ class BinancePerpClient(BaseClient):
                     "quantity_precision": sym["quantityPrecision"],
                 }
             )
-        return pd.DataFrame(rows)
+        return rows
