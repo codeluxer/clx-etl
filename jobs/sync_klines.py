@@ -176,5 +176,10 @@ async def sync_klines_1h():
     await asyncio.gather(*(updater(logger, coins, "1h") for updater in updaters))
 
 
+async def sync_klines_test():
+    logger = _logger.bind(job_id="KLINE[1m]")
+    await update_kline_binance(logger, ["BTC"], "1m")
+
+
 if __name__ == "__main__":
-    asyncio.run(sync_klines_1m())
+    asyncio.run(sync_klines_test())

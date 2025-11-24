@@ -42,5 +42,11 @@ async def sync_symbols():
     await asyncio.gather(*(client.update_all_symbols() for client in clients))
 
 
+async def sync_symbols_test():
+    logger = _logger.bind(job_id="SYMBOLS")
+    client = BinanceSpotClient(logger)
+    await client.update_all_symbols()
+
+
 if __name__ == "__main__":
-    asyncio.run(sync_symbols())
+    asyncio.run(sync_symbols_test())

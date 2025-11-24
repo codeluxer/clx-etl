@@ -8,7 +8,8 @@ from urllib.parse import urlencode
 
 from aiohttp import ClientSession, ClientTimeout
 from constants import INTERVAL_TO_SECONDS
-from databases.clickhouse import Kline1d, Kline1h, Kline1m, async_bulk_insert, get_async_client
+from databases.clickhouse import Kline1d, Kline1h, Kline1m
+from databases.doris import get_doris, get_stream_loader
 from databases.mysql import ExchangeSymbol, async_upsert, sync_engine
 from sqlalchemy import text
 
@@ -18,6 +19,8 @@ class BaseClient(ABC):
         self._exchange_id = None
         self.session: ClientSession | None = None
         self.logger = _logger.bind(exchange=self.exchange_name, inst_type=self.inst_type.name)
+        self.doris_client = get_doris()
+        self.doris_stream_loader = get_stream_loader()
 
     @abstractmethod
     def base_url(self):
@@ -81,6 +84,7 @@ class BaseClient(ABC):
                 "status",
             ],
         )
+        self.logger.info(f"{self.exchange_name}: Symbols updated")
 
     async def _get_kline(
         self,
@@ -100,89 +104,102 @@ class BaseClient(ABC):
         force_start: bool = False,
         **kwargs,
     ):
+        """
+        Doris 版本的 Kline 缺口扫描 + 批量补齐
+        """
         logger = self.logger.bind(symbol=symbol)
-        client = await get_async_client()
+
         now_ms = int(time.time() * 1000)
         end_ms = end_ms or now_ms
         interval_ms = INTERVAL_TO_SECONDS[interval] * 1000
         second = 1 if time_unit == "s" else 1000
 
-        # ✅ 1️⃣ 获取数据库中当前最大时间
-        result = await client.query(f"""
-        SELECT max(timestamp) FROM kline_{interval}
+        # ----------------------------------------
+        # 1) 查询 Doris 中当前最大 timestamp
+        # ----------------------------------------
+        q = f"""
+        SELECT MAX(dt)
+        FROM kline_{interval}
         WHERE exchange_id = {self.exchange_id}
-            AND inst_type = '{self.inst_type}'
-            AND symbol = '{symbol}'
-        """)
-        max_ts_in_db = result.result_rows[0][0] if result.result_rows and result.result_rows[0][0] else 0
+          AND inst_type = '{self.inst_type}'
+          AND symbol = '{symbol}'
+        """
+        r = await self.doris_client.query(q)
+        logger.info("max_ts_in_db: %s", r[0][0])
+        max_ts_in_db = int(r[0][0].timestamp()) * 1000 if r and r[0][0] else 0
+
+        # 初始 start_ms 确定
         if start_ms is None:
             if max_ts_in_db > 0:
                 start_ms = max_ts_in_db + interval_ms
             else:
                 today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
                 start_ms = int((today - timedelta(days=180)).timestamp() * 1000)
+
         if not force_start and max_ts_in_db > 0 and start_ms < max_ts_in_db:
             start_ms = max_ts_in_db + interval_ms
 
-        # ✅ 2️⃣ 查出缺口区间
+        # --------------------------------------------------------------------
+        # 2) Doris 扫描缺口（使用标准 SQL LAG 窗口函数）
+        # --------------------------------------------------------------------
         sql = f"""
         SELECT
-            prev_ts + {interval_ms} AS missing_start,
-            curr_ts - {interval_ms} AS missing_end
-        FROM
-        (
+            prev_ts,
+            curr_ts
+        FROM (
             SELECT
-                lagInFrame(timestamp) OVER (ORDER BY timestamp) AS prev_ts,
-                timestamp AS curr_ts
+                LAG(dt) OVER (ORDER BY dt) AS prev_ts,
+                dt AS curr_ts
             FROM kline_{interval}
             WHERE exchange_id = {self.exchange_id}
-            AND inst_type = '{self.inst_type}'
-            AND symbol = '{symbol}'
-            -- ✅ 关键：向前多取一条，确保窗口能计算到第一行
-            AND timestamp BETWEEN ({start_ms} - {interval_ms}) AND {end_ms}
-        )
+              AND inst_type = '{self.inst_type}'
+              AND symbol = '{symbol}'
+              AND dt BETWEEN ({start_ms} - {interval_ms}) AND {end_ms}
+        ) t
         WHERE prev_ts IS NOT NULL
-        AND curr_ts - prev_ts > {interval_ms}
+          AND curr_ts - prev_ts > {interval_ms}
         ORDER BY prev_ts
         """
-        result = await client.query(sql)
-        rows = [(prev, curr) for prev, curr in result.result_rows if prev is not None]
+
+        r = await self.doris_client.query(sql)
+        rows = [(row[0], row[1]) for row in r]
 
         missing_ranges = []
 
+        # 生成基本缺口区间
         for prev_ts, curr_ts in rows:
-            # 只检测真实 gap
             if curr_ts - prev_ts > interval_ms:
                 missing_start = prev_ts + interval_ms
                 missing_end = curr_ts - interval_ms
-                # 防止首行伪缺口：gap 太大且 prev_ts 小于 start_ms
-                if missing_start < start_ms:
-                    continue
-                missing_ranges.append((missing_start, missing_end))
+                if missing_start >= start_ms:
+                    missing_ranges.append((missing_start, missing_end))
 
-        # 头尾边界再单独检查
+        # 头尾边界补 gap
         if rows:
             first_curr = rows[0][1]
             last_curr = rows[-1][1]
+
             if first_curr > start_ms + interval_ms:
                 missing_ranges.insert(0, (start_ms, first_curr - interval_ms))
+
             if last_curr < end_ms - interval_ms:
                 missing_ranges.append((last_curr + interval_ms, end_ms))
         else:
-            # 完全无数据
+            # 完全没数据 → 整段都是缺口
             missing_ranges = [(start_ms, end_ms)]
 
+        # --------------------------------------------------------------------
+        # 3) 合并相邻 gap，降低 API 请求次数
+        # --------------------------------------------------------------------
         def merge_missing_ranges(ranges, interval_ms, limit):
             if not ranges:
                 return []
 
             merged = []
-            batch_max_span = limit * interval_ms  # 一次最多能请求的时间跨度
+            batch_max_span = limit * interval_ms
 
             cur_start, cur_end = ranges[0]
-
             for s, e in ranges[1:]:
-                # 如果当前 gap 与前一个 gap 相邻或在同一窗口范围内
                 if s - cur_end <= batch_max_span:
                     cur_end = max(cur_end, e)
                 else:
@@ -194,16 +211,22 @@ class BaseClient(ABC):
 
         missing_ranges = merge_missing_ranges(missing_ranges, interval_ms, limit)
 
+        # --------------------------------------------------------------------
+        # 4) 打印缺口
+        # --------------------------------------------------------------------
         logger.info(f"{symbol}: Found {len(missing_ranges)} gaps")
         for s, e in missing_ranges:
             logger.debug(f" - gap {s} → {e}")
 
+        # --------------------------------------------------------------------
+        # 5) 逐 gap 批量补数据
+        # --------------------------------------------------------------------
         params[start_time_key] = int(start_ms // (1000 / second))
+
         try:
             for start, end in missing_ranges:
-                logger.info(f"📈 {symbol} 补齐区间: {start} → {end}")
+                logger.info(f"📈 {symbol}: 补齐区间 {start} → {end}")
 
-                # 控制批量请求
                 current = start
                 while current <= end:
                     batch_end = min(current + limit * interval_ms, end)
@@ -212,8 +235,11 @@ class BaseClient(ABC):
                     if end_time_key:
                         params[end_time_key] = int(batch_end // (1000 / second))
 
+                    # 请求交易所 API
                     data = await self.send_request("GET", url, params=params)
                     batch = [format_item(d) for d in get_data(data)]
+
+                    # 对齐 timestamp（强制对齐 OHLC）
                     for d in batch:
                         d["timestamp"] = (d["timestamp"] // interval_ms) * interval_ms
 
@@ -223,14 +249,11 @@ class BaseClient(ABC):
                         await asyncio.sleep(sleep_ms / 1000)
                         continue
 
-                    # 对齐时间戳
-                    for d in batch:
-                        d["timestamp"] = (d["timestamp"] // interval_ms) * interval_ms
-
                     yield batch
 
                     current = max(d["timestamp"] for d in batch) + interval_ms
                     await asyncio.sleep(sleep_ms / 1000)
+
         except Exception as e:
             logger.error(
                 {
@@ -255,4 +278,6 @@ class BaseClient(ABC):
         elif interval == "1d":
             model = Kline1d
         async for klines in self.get_kline(symbol, interval, start_ms, end_ms):
-            await async_bulk_insert(klines, model)
+            for kline in klines:
+                kline["dt"] = datetime.fromtimestamp(kline["timestamp"] / 1000).strftime("%Y-%m-%d %H:%M:%S")
+            await self.doris_stream_loader.send_rows(klines, "kline_" + interval)

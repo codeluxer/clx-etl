@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Async exchange symbol sync and reader service"
 requires-python = ">=3.11"
 dependencies = [
-    "SQLAlchemy==2.0.*",
+    "SQLAlchemy[asyncio]==2.0.44",
     "apscheduler==3.11.0",
     "requests[socks]",
     "python-dotenv==1.1.1",
@@ -13,9 +13,6 @@ dependencies = [
     "cryptography==46.0.3",
     "aiomysql==0.3.2",
     "aiohttp==3.13.2",
-    "clickhouse-sqlalchemy==0.3.2",
-    "clickhouse-driver==0.2.10",
-    "clickhouse-connect==0.9.2",
     "pandas==2.3.3"
 ]
 
