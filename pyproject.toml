@@ -1,34 +1,40 @@
-[project]
+[tool.poetry]
 name = "hs-exchange-reader"
 version = "0.1.0"
 description = "Async exchange symbol sync and reader service"
-requires-python = ">=3.11"
-dependencies = [
-    "SQLAlchemy[asyncio]==2.0.44",
-    "apscheduler==3.11.0",
-    "requests[socks]",
-    "python-dotenv==1.1.1",
-    "loguru==0.7.3",
-    "pymysql==1.1.2",
-    "cryptography==46.0.3",
-    "aiomysql==0.3.2",
-    "aiohttp==3.13.2",
-    "pandas==2.3.3"
+authors = ["Bolong He <you@example.com>"]
+package-mode = false
+packages = [
+    { include = "databases" },
+    { include = "exchanges" },
+    { include = "jobs" },
+    { include = "utils" },
 ]
 
-# 可选：开发依赖（lint、类型检查、测试）
-[project.optional-dependencies]
-dev = [
-    "ruff>=0.6.0",
-    "black>=24.4.0",
-    "mypy>=1.10.0",
-    "types-requests",
-    "pytest>=8.0.0",
-]
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+SQLAlchemy = { version = "2.0.44", extras = ["asyncio"] }
+apscheduler = "3.11.0"
+requests = { extras = ["socks"], version = "*" }
+python-dotenv = "1.1.1"
+loguru = "0.7.3"
+pymysql = "1.1.2"
+cryptography = "46.0.3"
+aiomysql = "0.3.2"
+aiohttp = "3.13.2"
+pandas = "2.3.3"
+
+# 开发依赖
+[tool.poetry.group.dev.dependencies]
+ruff = ">=0.6.0"
+black = ">=24.4.0"
+mypy = ">=1.10.0"
+types-requests = "*"
+pytest = ">=8.0.0"
 
 [build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 # ===============================
 # Ruff 配置
@@ -36,32 +42,18 @@ build-backend = "setuptools.build_meta"
 [tool.ruff]
 target-version = "py313"
 line-length = 120
-src = ["app", "core", "jobs", "tests"]
+src = ["databases", "exchanges", "jobs", "utils"]
 
-# 选择的规则集
 select = [
-    "E",    # pycodestyle
-    "W",    # pycodestyle warnings
-    "F",    # pyflakes
-    "I",    # isort import sorting
-    "UP",   # pyupgrade
-    "B",    # flake8-bugbear
-    "A",    # flake8-builtins
-    "C4",   # flake8-comprehensions
-    "TID",  # tidy-imports
-    "N",    # pep8-naming
-    "ASYNC",# async safety
-    "RUF",  # ruff-specific
+    "E", "W", "F", "I", "UP", "B", "A", "C4", "TID", "N", "ASYNC", "RUF"
 ]
 
-# 忽略规则
 ignore = [
-    "E501",  # 行长度由 formatter 控制
-    "B008",  # 允许可变默认参数
-    "N818",  # 不强制 Exception 命名
+    "E501",
+    "B008",
+    "N818",
 ]
 
-# 排除目录
 exclude = [
     ".git",
     ".mypy_cache",
@@ -73,11 +65,8 @@ exclude = [
     "dist",
 ]
 
-# ===============================
-# Ruff 子模块
-# ===============================
 [tool.ruff.isort]
-known-first-party = ["app", "core", "jobs"]
+known-first-party = ["databases", "exchanges", "jobs", "utils"]
 combine-as-imports = true
 force-sort-within-sections = true
 lines-between-types = 1
@@ -112,11 +101,3 @@ show_error_codes = true
 check_untyped_defs = true
 namespace_packages = true
 plugins = ["sqlalchemy.ext.mypy.plugin"]
-
-[tool.setuptools]
-packages = [
-    "databases",
-    "exchanges",
-    "jobs",
-    "utils",
-]
