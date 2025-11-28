@@ -8,6 +8,7 @@ from jobs.sync_funding_rate import sync_funding_rate
 from jobs.sync_klines import sync_klines_1h, sync_klines_1m
 from jobs.sync_long_short_ratio import sync_long_short_ratio_1d, sync_long_short_ratio_1h, sync_long_short_ratio_5m
 from jobs.sync_symbols import sync_symbols
+from utils.start_logo import print_banner
 
 
 def ensure_extra_fields(record):
@@ -83,6 +84,7 @@ async def main():
 
 
 if __name__ == "__main__":
+    print_banner()
     logger = _logger.bind(job_id="MAIN")
     logger.info("Starting scheduler...")
     asyncio.run(main())

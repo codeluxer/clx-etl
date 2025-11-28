@@ -51,6 +51,7 @@ steps:
               --name clx-etl \
               --restart always \
               -e ENV=staging \
+              -e VERSION=${CI_COMMIT_SHA} \
               -e DORIS_HOST=192.168.50.136 \
               -e DORIS_HTTP_PORT=8030 \
               -e DORIS_PORT=9030 \

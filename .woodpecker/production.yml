@@ -51,6 +51,7 @@ steps:
               --name clx-etl \
               --restart always \
               -e ENV=production \
+              -e VERSION=${CI_COMMIT_TAG} \
               -e DORIS_HOST=192.168.50.131 \
               -e DORIS_HTTP_PORT=8030 \
               -e DORIS_PORT=9030 \
