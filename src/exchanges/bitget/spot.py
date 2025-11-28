@@ -1,9 +1,9 @@
 from typing import ClassVar
 
 from constants import InstType, SymbolStatus
-from utils import precision
 
 from exchanges._base_ import BaseClient
+from utils import precision
 
 
 class BitgetSpotClient(BaseClient):

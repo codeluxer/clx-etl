@@ -7,10 +7,11 @@ from typing import Literal
 from urllib.parse import urlencode
 
 from aiohttp import ClientSession, ClientTimeout
+from sqlalchemy import text
+
 from constants import INTERVAL_TO_SECONDS
 from databases.doris import get_doris, get_stream_loader
 from databases.mysql import ExchangeSymbol, async_upsert, sync_engine
-from sqlalchemy import text
 
 
 class BaseClient(ABC):
@@ -23,11 +24,11 @@ class BaseClient(ABC):
 
     @abstractmethod
     def base_url(self):
-        raise NotImplementedError
+        raise NotImplementedError("base_url")
 
     @abstractmethod
     def exchange_name(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError("exchange_name")
 
     @property
     def exchange_id(self):
@@ -40,7 +41,7 @@ class BaseClient(ABC):
 
     @abstractmethod
     def inst_type(self):
-        raise NotImplementedError
+        raise NotImplementedError("inst_type")
 
     async def _get_session(self) -> ClientSession:
         if self.session is None or self.session.closed:
@@ -48,7 +49,10 @@ class BaseClient(ABC):
         return self.session
 
     async def send_request(self, method: Literal["GET", "POST"], endpoint: str, params=None, headers=None) -> dict:
-        url = f"{self.base_url}{endpoint}"
+        if endpoint.startswith("http"):
+            url = endpoint
+        else:
+            url = f"{self.base_url}{endpoint}"
         session = await self._get_session()
         if method == "GET":
             if params:
@@ -68,7 +72,7 @@ class BaseClient(ABC):
 
     @abstractmethod
     async def get_all_symbols(self):
-        raise NotImplementedError
+        raise NotImplementedError("get_all_symbols")
 
     async def update_all_symbols(self):
         values = await self.get_all_symbols()
@@ -275,3 +279,27 @@ class BaseClient(ABC):
             for kline in klines:
                 kline["dt"] = datetime.fromtimestamp(kline["timestamp"] / 1000).strftime("%Y-%m-%d %H:%M:%S")
             await self.doris_stream_loader.send_rows(klines, "kline_" + interval)
+
+    async def get_funding_rate(self, next_funding_times_by_symbol: dict[str, int], *args, **kwargs):
+        raise NotImplementedError("get_funding_rate not implemented")
+
+    async def update_funding_rate(self, *args, **kwargs):
+        funding_rate_data = await self.get_funding_rate(next_funding_times_by_symbol={})
+        await self.doris_stream_loader.send_rows(funding_rate_data, "funding_settlement")
+
+    async def get_long_short_ratio(
+        self, symbol: ExchangeSymbol, interval: Literal["5m", "1h", "1d"] = "5m", *args, **kwargs
+    ):
+        raise NotImplementedError("get_long_short_ratio not implemented")
+
+    async def update_long_short_ratio_5m(self, symbol: ExchangeSymbol, *args, **kwargs):
+        long_short_ratio_data = await self.get_long_short_ratio(symbol=symbol, interval="5m")
+        await self.doris_stream_loader.send_rows(long_short_ratio_data, "market_sentiment_5m")
+
+    async def update_long_short_ratio_1h(self, symbol: ExchangeSymbol, *args, **kwargs):
+        long_short_ratio_data = await self.get_long_short_ratio(symbol=symbol, interval="1h")
+        await self.doris_stream_loader.send_rows(long_short_ratio_data, "market_sentiment_1h")
+
+    async def update_long_short_ratio_1d(self, symbol: ExchangeSymbol, *args, **kwargs):
+        long_short_ratio_data = await self.get_long_short_ratio(symbol=symbol, interval="1d")
+        await self.doris_stream_loader.send_rows(long_short_ratio_data, "market_sentiment_1d")

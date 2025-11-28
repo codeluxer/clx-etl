@@ -1,5 +1,7 @@
 import asyncio
 
+from loguru import logger as _logger
+
 from exchanges.aster import AsterPerpClient, AsterSpotClient
 from exchanges.binance import BinancePerpClient, BinanceSpotClient
 from exchanges.bitget import BitgetPerpClient, BitgetSpotClient
@@ -11,7 +13,6 @@ from exchanges.kraken import KrakenSpotClient
 from exchanges.mexc import MexcPerpClient, MexcSpotClient
 from exchanges.okx import OkxPerpClient, OkxSpotClient
 from exchanges.woox import WooxPerpClient, WooxSpotClient
-from loguru import logger as _logger
 
 
 async def sync_symbols():
@@ -42,11 +43,11 @@ async def sync_symbols():
     await asyncio.gather(*(client.update_all_symbols() for client in clients))
 
 
-async def sync_symbols_test():
-    logger = _logger.bind(job_id="SYMBOLS")
-    client = BinanceSpotClient(logger)
-    await client.update_all_symbols()
-
-
 if __name__ == "__main__":
+
+    async def sync_symbols_test():
+        logger = _logger.bind(job_id="SYMBOLS")
+        client = BinanceSpotClient(logger)
+        await client.update_all_symbols()
+
     asyncio.run(sync_symbols_test())

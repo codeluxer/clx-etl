@@ -1,8 +1,11 @@
+from datetime import UTC, datetime
 from typing import ClassVar
 
 from constants import InstType, SymbolStatus
 
+from databases.mysql import ExchangeSymbol
 from exchanges._base_ import BaseClient
+from utils import align_to_5m
 
 
 def get_price_precision(filters) -> int:
@@ -125,3 +128,123 @@ class BinancePerpClient(BaseClient):
             sleep_ms=sleep_ms,
         ):
             yield results
+
+    async def get_long_short_ratio(self, symbol: ExchangeSymbol, interval: str = "5m"):
+        """
+        https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints#top-trader-long-short-ratio
+
+        interval: "5m","15m","30m","1h","2h","4h","6h","12h","1d"
+        """
+        s = symbol.symbol
+        top_position_ratio = await self.send_request(
+            "GET", "/futures/data/topLongShortPositionRatio", params={"symbol": s, "period": interval}
+        )
+        pos_dict = {}
+        for i in top_position_ratio:
+            pos_dict[align_to_5m(i["timestamp"])] = {
+                "top_trader_pos_long": i["longAccount"],
+                "top_trader_pos_short": i["shortAccount"],
+            }
+        top_account_ratio = await self.send_request(
+            "GET", "/futures/data/topLongShortAccountRatio", params={"symbol": s, "period": interval}
+        )
+        acc_dict = {}
+        for i in top_account_ratio:
+            acc_dict[align_to_5m(i["timestamp"])] = {
+                "top_trader_acc_long": i["longAccount"],
+                "top_trader_acc_short": i["shortAccount"],
+            }
+
+        retail_ratio = await self.send_request(
+            "GET", "/futures/data/globalLongShortAccountRatio", params={"symbol": s, "period": interval}
+        )
+        retail_dict = {}
+        for i in retail_ratio:
+            retail_dict[align_to_5m(i["timestamp"])] = {
+                "retail_acc_long": i["longAccount"],
+                "retail_acc_short": i["shortAccount"],
+            }
+
+        merged = []
+        all_ts = sorted(set(pos_dict.keys()) | set(acc_dict.keys()) | set(retail_dict.keys()))
+
+        for ts in all_ts:
+            row = {
+                "ts": ts,
+                "symbol": symbol.symbol,
+                "exchange_id": self.exchange_id,
+                "inst_type": self.inst_type.value,
+                **pos_dict.get(ts, {}),
+                **acc_dict.get(ts, {}),
+                **retail_dict.get(ts, {}),
+                "updated_at": datetime.now(),
+            }
+            merged.append(row)
+
+        return merged
+
+    def get_adl_data(self, symbol: ExchangeSymbol):
+        """
+        https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/ADL-Risk
+        """
+        s = symbol.symbol
+        adl_data = self.send_request("GET", "/fapi/v1/symbolAdlRisk", params={"symbol": s})
+        return adl_data
+
+    async def get_funding_rate(self, *args, **kwargs):
+        """
+        https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-History
+        """
+        history_funding_rate = await self.send_request("GET", "/fapi/v1/fundingRate")
+        funding_info = await self.send_request("GET", "/fapi/v1/fundingInfo")
+        funding_info_dict = {i["symbol"]: i for i in funding_info}
+
+        merged = []
+        for i in history_funding_rate:
+            info = funding_info_dict.get(i["symbol"])
+            if not info:
+                continue
+
+            merged.append(
+                {
+                    "exchange_id": self.exchange_id,
+                    "symbol": i["symbol"],
+                    "inst_type": self.inst_type.value,
+                    "dt": datetime.fromtimestamp(i["fundingTime"] / 1000, tz=UTC),
+                    "funding_rate": i["fundingRate"],
+                    "funding_interval": info["fundingIntervalHours"] * 60,
+                    "adjusted_cap": info["adjustedFundingRateCap"],
+                    "adjusted_floor": info["adjustedFundingRateFloor"],
+                }
+            )
+        return merged
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    from loguru import logger as _logger
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+
+    from databases.mysql import sync_engine
+
+    client = BinancePerpClient(_logger)
+
+    with Session(sync_engine) as conn:
+        stmt = (
+            select(ExchangeSymbol)
+            .where(ExchangeSymbol.base_asset == "BTC")
+            .where(ExchangeSymbol.quote_asset == "USDT")
+            .where(ExchangeSymbol.exchange_id == client.exchange_id)
+            .where(ExchangeSymbol.inst_type == client.inst_type)
+        )
+
+        symbol = conn.execute(stmt).scalars().one_or_none()
+    print("symbol", symbol)
+
+    async def main():
+        data = await client.get_funding_rate()
+        print(data)
+
+    asyncio.run(main())

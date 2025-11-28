@@ -31,4 +31,4 @@ RUN poetry install --no-interaction --no-ansi --without dev
 COPY . .
 
 # 默认启动命令（你可按需修改）
-CMD ["python", "scheduler.py"]
+CMD ["python", "src/main.py"]
