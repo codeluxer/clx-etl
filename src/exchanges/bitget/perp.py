@@ -174,7 +174,7 @@ class BitgetPerpClient(BaseClient):
                 "updated_at": datetime.now(),
             }
             merged.append(row)
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(1)
         return merged
 
     async def get_funding_rate(self, next_funding_times_by_symbol: dict[str, int], *args, **kwargs):
