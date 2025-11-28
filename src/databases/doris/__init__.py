@@ -18,7 +18,6 @@ class DorisAsyncDB:
         db_name = os.getenv("DORIS_DB", "default")
 
         self.DATABASE_URL = f"mysql+aiomysql://{db_user}:{db_pass}@{db_host}:9030/{db_name}"
-        print("DORIS_URL", self.DATABASE_URL)
         self.engine = create_async_engine(
             self.DATABASE_URL,
             echo=False,
@@ -148,13 +147,14 @@ class DorisStreamLoader:
     #     else:
     #         raise Exception(f"StreamLoad to {database}.{table} failed: {result}")
 
-    async def send_rows(self, rows, table: str, column_names: list[str] = None, **kwargs):
+    async def send_rows(self, rows, table: str, column_names: list[str] | None = None, **kwargs):
         """
         写入 Doris StreamLoad:
         - rows: list[dict] or list[list]
         - column_names: required for list[list]，可选 for list[dict]
         """
-
+        if not rows:
+            return
         # -------------------
         # 1. 处理 list[dict]
         # -------------------
@@ -219,6 +219,7 @@ class DorisStreamLoader:
         if resp.status == 200 and result.get("Status") == "Success":
             return result
         else:
+            print(rows)
             raise Exception(f"StreamLoad to {self.database}.{table} failed: {result}")
 
 

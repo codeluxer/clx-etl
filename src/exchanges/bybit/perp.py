@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime
 from typing import ClassVar
 
@@ -172,7 +173,7 @@ class BybitPerpClient(BaseClient):
 
         for ts in all_ts:
             row = {
-                "ts": ts,
+                "dt": ts,
                 "symbol": symbol.symbol,
                 "exchange_id": self.exchange_id,
                 "inst_type": self.inst_type.value,
@@ -232,8 +233,6 @@ class BybitPerpClient(BaseClient):
 
 
 if __name__ == "__main__":
-    import asyncio
-
     from loguru import logger as _logger
     from sqlalchemy import select
     from sqlalchemy.orm import Session

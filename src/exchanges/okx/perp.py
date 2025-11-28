@@ -174,7 +174,7 @@ class OkxPerpClient(BaseClient):
 
         for ts in all_ts:
             row = {
-                "ts": ts,
+                "dt": ts,
                 "symbol": symbol.symbol,
                 "exchange_id": self.exchange_id,
                 "inst_type": self.inst_type.value,

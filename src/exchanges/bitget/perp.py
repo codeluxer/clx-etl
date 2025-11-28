@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime
 from typing import ClassVar
 
@@ -128,6 +129,9 @@ class BitgetPerpClient(BaseClient):
         top_position_ratio = await self.send_request(
             "GET", "/api/v2/mix/market/position-long-short", params={"symbol": s, "period": interval}
         )
+        if top_position_ratio["code"] == "40054":
+            return []
+
         pos_dict = {}
         for i in top_position_ratio["data"]:
             pos_dict[align_to_5m(i["ts"])] = {
@@ -160,7 +164,7 @@ class BitgetPerpClient(BaseClient):
 
         for ts in all_ts:
             row = {
-                "ts": ts,
+                "dt": ts,
                 "symbol": symbol.symbol,
                 "exchange_id": self.exchange_id,
                 "inst_type": self.inst_type.value,
@@ -198,7 +202,7 @@ class BitgetPerpClient(BaseClient):
                             "exchange_id": self.exchange_id,
                             "symbol": i["symbol"],
                             "inst_type": self.inst_type.value,
-                            "dt": datetime.fromtimestamp(j["fundingTime"] / 1000, tz=UTC),
+                            "dt": datetime.fromtimestamp(int(j["fundingTime"]) / 1000, tz=UTC),
                             "funding_rate": j["fundingRate"],
                             "funding_interval": float(i["fundingRateInterval"]) * 60,
                             "adjusted_cap": i["maxFundingRate"],
@@ -210,8 +214,6 @@ class BitgetPerpClient(BaseClient):
 
 
 if __name__ == "__main__":
-    import asyncio
-
     from loguru import logger as _logger
     from sqlalchemy import select
     from sqlalchemy.orm import Session

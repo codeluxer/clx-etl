@@ -22,7 +22,7 @@ from .utils import get_symbols
 async def update_kline(client: BaseClient, coins: [str], interval: Literal["1m", "1h", "1d"]):
     symbols = await get_symbols(client.exchange_name, coins, "USDT", client.inst_type)
     for i in symbols:
-        await client.update_kline(i, interval, 1735689600000)
+        await client.update_kline(i.symbol, interval, 1735689600000)
 
 
 async def sync_klines_1m():

@@ -59,3 +59,7 @@ async def sync_long_short_ratio_1d():
     ]
 
     await asyncio.gather(*(update_long_short_ratio(client, COINS, "1d") for client in clients))
+
+
+if __name__ == "__main__":
+    asyncio.run(sync_long_short_ratio_5m())

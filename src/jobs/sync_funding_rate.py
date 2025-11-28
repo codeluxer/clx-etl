@@ -23,3 +23,7 @@ async def sync_funding_rate():
     ]
 
     await asyncio.gather(*(update_funding_rate(client) for client in clients))
+
+
+if __name__ == "__main__":
+    asyncio.run(sync_funding_rate())
