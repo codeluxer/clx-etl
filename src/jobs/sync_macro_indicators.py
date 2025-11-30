@@ -1,6 +1,6 @@
 from macro_markets.macro_indicators import get_macro_klines
 
-from utils.stream_loader import get_stream_loader
+from databases.doris import get_stream_loader
 
 
 async def sync_macro_indicators():
