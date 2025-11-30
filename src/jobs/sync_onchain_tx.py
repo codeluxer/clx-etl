@@ -8,4 +8,10 @@ async def sync_large_transfer():
     oklink_onchain_info = OklinkOnchainInfo()
 
     result = await oklink_onchain_info.large_tranfer_monitor()
-    await stream_loader.send_rows(result, "large_transfer")
+    await stream_loader.send_rows(result, "onchain_large_transfers")
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(sync_large_transfer())
