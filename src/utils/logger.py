@@ -1,4 +1,5 @@
 import logging
+from logging.handlers import TimedRotatingFileHandler
 import os
 import sys
 
@@ -62,24 +63,38 @@ def format_caller(_, __, event_dict):
 
 def configure_prod_logging():
     """
-    Production = pure structlog JSON
-    No loguru.
+    Production logging:
+    - structlog JSON → file + stdout
+    - no loguru
     """
-    # Clean up loguru
-    loguru_logger.remove()  # 不使用 loguru 输出
+    loguru_logger.remove()
 
-    # Configure standard logging → JSON
+    log_dir = "/app/logs"
+    os.makedirs(log_dir, exist_ok=True)
+
+    file_handler = TimedRotatingFileHandler(
+        filename=os.path.join(log_dir, "app.log"),
+        when="midnight",
+        interval=1,
+        backupCount=3,
+        encoding="utf-8",
+        utc=True,
+    )
+    file_handler.setLevel(logging.INFO)
+
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setLevel(logging.INFO)
+
     logging.basicConfig(
-        stream=sys.stdout,
-        level=logging.DEBUG,
+        handlers=[file_handler, stdout_handler],
+        level=logging.INFO,
         format="%(message)s",
         force=True,
     )
 
-    # Configure structlog JSON → Loki
     structlog.configure(
         processors=[
-            structlog.contextvars.merge_contextvars,  # merge bind() contextvars
+            structlog.contextvars.merge_contextvars,
             structlog.stdlib.add_log_level,
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.processors.CallsiteParameterAdder(
@@ -99,11 +114,6 @@ def configure_prod_logging():
     )
 
     class InterceptHandler(logging.Handler):
-        """
-        Redirect Python logging (APScheduler, uvicorn, urllib3...)
-        into structlog, with caller preserved.
-        """
-
         def emit(self, record):
             try:
                 level = record.levelno
@@ -111,18 +121,15 @@ def configure_prod_logging():
                 level = logging.INFO
 
             struct_logger = structlog.get_logger(record.name)
-
-            # attach caller from logging
             caller = f"{record.name}:{record.funcName}:{record.lineno}"
 
             struct_logger.bind(caller=caller).log(level, record.getMessage())
 
-    # Override root logger handler
     root_logger = logging.getLogger()
     root_logger.handlers = [InterceptHandler()]
     root_logger.setLevel(logging.INFO)
 
-    return structlog.get_logger()  # PROD 只用 structlog
+    return structlog.get_logger()
 
 
 def setup_logging():

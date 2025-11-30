@@ -5,9 +5,12 @@ import os
 from urllib.parse import quote
 
 import aiohttp
+from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
+load_dotenv()
 
 
 class DorisAsyncDB:

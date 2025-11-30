@@ -18,3 +18,10 @@ async def get_symbols(exchange: str, base_asset: [str], quote_asset: str, inst_t
         )
         symbols = conn.execute(results).scalars().all()
     return symbols
+
+
+async def get_exchange_info(exchange: str):
+    with Session(sync_engine) as conn:
+        results = select(ExchangeInfo).where(ExchangeInfo.name == exchange)
+        exchange_info = conn.execute(results).scalar_one_or_none()
+    return exchange_info

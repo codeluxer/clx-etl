@@ -7,7 +7,11 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from jobs.sync_funding_rate import sync_funding_rate
 from jobs.sync_klines import sync_klines_1h, sync_klines_1m
 from jobs.sync_long_short_ratio import sync_long_short_ratio_1d, sync_long_short_ratio_1h, sync_long_short_ratio_5m
+from jobs.sync_onchain_tx import sync_large_transfer
 from jobs.sync_symbols import sync_symbols
+from jobs.sync_cex_inflow import sync_cex_inflow
+from jobs.sync_macro_indicators import sync_macro_indicators
+from jobs.sync_kalshi import sync_kalshi
 from utils.http_session import shutdown
 from utils.start_logo import print_banner
 
@@ -59,6 +63,38 @@ async def main():
         max_instances=1,
         coalesce=True,
     )
+
+    scheduler.add_job(
+        sync_large_transfer,
+        "interval",
+        seconds=30,
+        max_instances=1,
+    )
+
+    scheduler.add_job(
+        sync_cex_inflow,
+        "cron",
+        minute=0,
+        second="5, 30",
+        max_instances=1,
+        misfire_grace_time=60,
+        coalesce=True,
+    )
+
+    scheduler.add_job(
+        sync_kalshi,
+        "interval",
+        seconds=60,
+        max_instances=1,
+    )
+
+    scheduler.add_job(
+        sync_macro_indicators,
+        "interval",
+        seconds=30,
+        max_instances=1,
+    )
+
     scheduler.start()
 
     await asyncio.Event().wait()  # 防止退出
