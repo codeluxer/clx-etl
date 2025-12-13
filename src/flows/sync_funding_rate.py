@@ -34,10 +34,12 @@ async def sync_funding_rate():
         "bybit": BybitPerpClient(logger),
         "okx": OkxPerpClient(logger),
     }
+    tasks = []
 
-    # Prefect 会自动并发执行 submit，不需要 asyncio.gather
     for name, client in clients.items():
-        update_funding_rate_task.submit(client_name=name, client=client)
+        tasks.append(update_funding_rate_task(client_name=name, client=client))
+
+    await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":

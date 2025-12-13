@@ -52,8 +52,10 @@ async def update_symbols_task(client_name: str):
 
 @flow(name="sync-symbols")
 async def sync_symbols():
+    tasks = []
     for client_name in CLIENT_REGISTRY:
-        update_symbols_task.submit(client_name)
+        tasks.append(update_symbols_task(client_name))
+    await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":

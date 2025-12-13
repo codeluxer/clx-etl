@@ -37,8 +37,10 @@ async def sync_one_cex_inflow(exchange_name: str):
 
 @flow(name="sync-cex-inflow")
 async def sync_cex_inflow():
+    tasks = []
     for name in exchange_names:
-        sync_one_cex_inflow.submit(name)
+        tasks.append(sync_one_cex_inflow(name))
+    await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":

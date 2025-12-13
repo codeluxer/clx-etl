@@ -1,3 +1,5 @@
+import asyncio
+
 from macro_markets.kalshi import KalshiClient
 from prefect import flow
 
@@ -12,4 +14,4 @@ async def sync_kalshi_flow():
 
 
 if __name__ == "__main__":
-    sync_kalshi_flow.serve(name="sync-kalshi", cron="* * * * *")
+    asyncio.run(sync_kalshi_flow())
