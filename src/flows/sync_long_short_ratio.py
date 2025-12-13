@@ -3,15 +3,13 @@ import traceback
 from typing import Literal
 
 from constants import InstType
-from prefect import flow, task
-from prefect.cache_policies import NO_CACHE
+from prefect import flow, get_run_logger, task
 
 from exchanges._base_ import BaseClient
 from exchanges.binance import BinancePerpClient
 from exchanges.bitget import BitgetPerpClient
 from exchanges.bybit import BybitPerpClient
 from exchanges.okx import OkxPerpClient
-from utils.logger import logger as _logger
 
 from .constants import COINS
 from .utils import get_symbols
@@ -19,11 +17,10 @@ from .utils import get_symbols
 
 @task(
     name="update-long-short-ratio-task",
-    retries=2,
-    retry_delay_seconds=3,
-    cache_policy=NO_CACHE,
 )
 async def update_long_short_ratio(client_name: str, interval: Literal["5m", "1h", "1d"], coins: list[str]):
+    logger = get_run_logger()
+    logger.info(f"[{client_name}] Start")
     try:
         # 动态加载 client
         client: BaseClient = {
@@ -31,7 +28,7 @@ async def update_long_short_ratio(client_name: str, interval: Literal["5m", "1h"
             "bitget": BitgetPerpClient,
             "bybit": BybitPerpClient,
             "okx": OkxPerpClient,
-        }[client_name](_logger)
+        }[client_name](logger)
 
         symbols = await get_symbols(client_name, coins, "USDT", InstType.PERP)
 
@@ -44,12 +41,12 @@ async def update_long_short_ratio(client_name: str, interval: Literal["5m", "1h"
                 elif interval == "1d":
                     await client.update_long_short_ratio_1d(sym)
             except Exception as e:
-                _logger.error(f"[{client_name}] Failed {sym}: {e}")
+                logger.error(f"[{client_name}] Failed {sym}: {e}")
                 traceback.print_exc()
                 await asyncio.sleep(1)
 
     except Exception as e:
-        _logger.error(f"[{client_name}] Failed overall: {e}")
+        logger.error(f"[{client_name}] Failed overall: {e}")
         traceback.print_exc()
         await asyncio.sleep(1)
 
@@ -59,13 +56,15 @@ def get_client_names() -> list[str]:
 
 
 async def submit_tasks(interval: str):
-    # Prefect 会自动并发执行 submit
-    for name in get_client_names():
-        update_long_short_ratio.submit(name, interval, COINS)
+    tasks = [update_long_short_ratio(name, interval, COINS) for name in get_client_names()]
+
+    await asyncio.gather(*tasks)
 
 
 @flow(name="sync-long-short-ratio-5m")
 async def sync_long_short_ratio_5m():
+    logger = get_run_logger()
+    logger.info("Start sync long short ratio 5m")
     await submit_tasks("5m")
 
 
@@ -80,4 +79,4 @@ async def sync_long_short_ratio_1d():
 
 
 if __name__ == "__main__":
-    asyncio.run(sync_long_short_ratio_5m())
+    asyncio.run(sync_long_short_ratio_1h())

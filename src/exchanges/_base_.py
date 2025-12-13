@@ -19,7 +19,10 @@ class BaseClient(ABC):
     def __init__(self, _logger):
         self._exchange_id = None
         self.session: ClientSession | None = None
-        self.logger = _logger.bind(exchange=self.exchange_name, inst_type=self.inst_type.name)
+        try:
+            self.logger = _logger.bind(exchange=self.exchange_name, inst_type=self.inst_type.name)
+        except AttributeError:
+            self.logger = _logger
         self.doris_client = get_doris()
         self.doris_stream_loader = get_stream_loader()
 
