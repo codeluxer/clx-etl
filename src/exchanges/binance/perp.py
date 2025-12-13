@@ -196,7 +196,7 @@ class BinancePerpClient(BaseClient):
         """
         https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-History
         """
-        history_funding_rate = await self.send_request("GET", "/fapi/v1/fundingRate")
+        history_funding_rate = await self.send_request("GET", "/fapi/v1/fundingRate?limit=1000")
         funding_info = await self.send_request("GET", "/fapi/v1/fundingInfo")
         funding_info_dict = {i["symbol"]: i for i in funding_info}
 
