@@ -11,12 +11,17 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
+from utils.logger import logger as _logger
+
 load_dotenv()
 
 
 class DorisAsyncDB:
     def __init__(self):
-        self.logger = get_run_logger()
+        try:
+            self.logger = get_run_logger()
+        except Exception:
+            self.logger = _logger
         db_host = os.getenv("DORIS_HOST", "127.0.0.1")
         db_user = os.getenv("DORIS_USER", "root")
         db_pass = os.getenv("DORIS_PASSWORD", "")

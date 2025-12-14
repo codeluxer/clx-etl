@@ -142,8 +142,6 @@ class BaseClient(ABC):
         """
         Doris 版本的 Kline 缺口扫描 + 批量补齐
         """
-        logger = self.logger.bind(symbol=symbol)
-
         now_ms = int(time.time() * 1000)
         end_ms = end_ms or now_ms
         interval_ms = INTERVAL_TO_SECONDS[interval] * 1000
@@ -160,7 +158,7 @@ class BaseClient(ABC):
           AND symbol = '{symbol}'
         """
         r = await self.doris_client.query(q)
-        logger.info("max_ts_in_db: %s", r[0][0])
+        self.logger.info("max_ts_in_db: %s", r[0][0])
         max_ts_in_db = int(r[0][0].timestamp()) * 1000 if r and r[0][0] else 0
 
         # 初始 start_ms 确定
@@ -249,9 +247,9 @@ class BaseClient(ABC):
         # --------------------------------------------------------------------
         # 4) 打印缺口
         # --------------------------------------------------------------------
-        logger.info(f"{symbol}: Found {len(missing_ranges)} gaps")
+        self.logger.info(f"{symbol}: Found {len(missing_ranges)} gaps")
         for s, e in missing_ranges:
-            logger.debug(f" - gap {s} → {e}")
+            self.logger.debug(f" - gap {s} → {e}")
 
         # --------------------------------------------------------------------
         # 5) 逐 gap 批量补数据
@@ -260,7 +258,7 @@ class BaseClient(ABC):
 
         try:
             for start, end in missing_ranges:
-                logger.info(f"📈 {symbol}: 补齐区间 {start} → {end}")
+                self.logger.info(f"📈 {symbol}: 补齐区间 {start} → {end}")
 
                 current = start
                 while current <= end:
@@ -279,7 +277,7 @@ class BaseClient(ABC):
                         d["timestamp"] = (d["timestamp"] // interval_ms) * interval_ms
 
                     if not batch:
-                        logger.debug(f"[{symbol}] No data in {current} → {batch_end}")
+                        self.logger.debug(f"[{symbol}] No data in {current} → {batch_end}")
                         current = batch_end + interval_ms
                         await asyncio.sleep(sleep_ms / 1000)
                         continue
@@ -290,7 +288,7 @@ class BaseClient(ABC):
                     await asyncio.sleep(sleep_ms / 1000)
 
         except Exception as e:
-            logger.error(
+            self.logger.error(
                 {
                     "url": self.base_url + url,
                     "params": params,

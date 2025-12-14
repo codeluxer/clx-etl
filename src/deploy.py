@@ -4,6 +4,7 @@ import os
 from flows.sync_cex_inflow import sync_cex_inflow
 from flows.sync_funding_rate import sync_funding_rate
 from flows.sync_kalshi import sync_kalshi_flow
+from flows.sync_klines import sync_klines_1m
 from flows.sync_long_short_ratio import (
     sync_long_short_ratio_1d,
     sync_long_short_ratio_1h,
@@ -13,7 +14,7 @@ from flows.sync_macro_indicators import sync_macro_indicators
 from flows.sync_onchain_tx import sync_onchain_large_transfer
 from flows.sync_symbols import sync_symbols
 from prefect import deploy
-from prefect.client.schemas.schedules import IntervalSchedule, RRuleSchedule
+from prefect.client.schemas.schedules import CronSchedule, IntervalSchedule, RRuleSchedule
 from prefect.types.entrypoint import EntrypointType
 
 ENV = os.getenv("ENV")
@@ -131,6 +132,13 @@ if __name__ == "__main__":
             tags=[ENV],
             description="同步 Kalshi 数据",
             schedule=IntervalSchedule(interval=60),
+            entrypoint_type=EntrypointType.MODULE_PATH,
+        ),
+        sync_klines_1m.to_deployment(
+            name=f"{ENV}-sync-klines-1m",
+            tags=[ENV],
+            description="同步交易所 Kline[1m]",
+            schedule=CronSchedule(cron="1 * * * *"),
             entrypoint_type=EntrypointType.MODULE_PATH,
         ),
     ]
