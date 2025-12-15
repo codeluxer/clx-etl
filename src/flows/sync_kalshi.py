@@ -1,14 +1,13 @@
 import asyncio
 
 from macro_markets.kalshi import KalshiClient
-from prefect import flow
-
-from utils.logger import logger as _logger
+from prefect import flow, get_run_logger
 
 
 @flow(name="sync-kalshi")
 async def sync_kalshi_flow():
-    logger = _logger.bind(job_id="KALSHI")
+    logger = get_run_logger()
+    logger.info("Start sync kalshi market meta")
     client = KalshiClient(logger)
     await client.sync_market_meta()
 

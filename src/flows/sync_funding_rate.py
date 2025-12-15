@@ -1,7 +1,7 @@
 import asyncio
 import traceback
 
-from prefect import flow, task
+from prefect import flow, get_run_logger, task
 from prefect.cache_policies import NO_CACHE
 
 from exchanges._base_ import BaseClient
@@ -9,35 +9,34 @@ from exchanges.binance import BinancePerpClient
 from exchanges.bitget import BitgetPerpClient
 from exchanges.bybit import BybitPerpClient
 from exchanges.okx import OkxPerpClient
-from utils.logger import logger as _logger
+
+ALL_CLIENTS: dict[str, BaseClient] = {
+    "binance": BinancePerpClient,
+    "bitget": BitgetPerpClient,
+    "bybit": BybitPerpClient,
+    "okx": OkxPerpClient,
+}
 
 
 @task(name="update-funding-rate", cache_policy=NO_CACHE)
-async def update_funding_rate_task(client_name: str, client: BaseClient):
+async def update_funding_rate_task(client_name: str):
+    logger = get_run_logger()
+    logger.info(f"Start update funding rate for {client_name}")
     try:
-        await client.update_funding_rate()
-        return f"{client_name} ok"
+        await ALL_CLIENTS[client_name](logger).update_funding_rate()
+        logger.info(f"Update funding rate for {client_name} ok")
     except Exception as e:
-        _logger.error(f"[{client_name}] Failed: {e}")
+        logger.error(f"[{client_name}] Failed: {e}")
         traceback.print_exc()
         await asyncio.sleep(1)
-        return f"{client_name} failed"
 
 
 @flow(name="sync-funding-rate")
 async def sync_funding_rate():
-    logger = _logger.bind(job_id="FUNDING_RATE")
-
-    clients: dict[str, BaseClient] = {
-        "binance": BinancePerpClient(logger),
-        "bitget": BitgetPerpClient(logger),
-        "bybit": BybitPerpClient(logger),
-        "okx": OkxPerpClient(logger),
-    }
     tasks = []
 
-    for name, client in clients.items():
-        tasks.append(update_funding_rate_task(client_name=name, client=client))
+    for name in ALL_CLIENTS.keys():
+        tasks.append(update_funding_rate_task(client_name=name))
 
     await asyncio.gather(*tasks)
 

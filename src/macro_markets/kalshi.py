@@ -5,7 +5,6 @@ from typing import Literal
 
 from databases.doris import get_doris, get_stream_loader
 from utils.http_session import get_session
-from utils.logger import logger as _logger
 
 OI_THRESHOLDS = {
     # ===== Fed / Rates =====
@@ -67,7 +66,7 @@ HEADERS = {"Accept": "application/json", "User-Agent": "CoinLuxer-PM-ETL/1.0"}
 
 class KalshiClient:
     def __init__(self, logger=None):
-        self.logger = logger or _logger.bind(job_id="KALSHI")
+        self.logger = logger
         self._session = None
 
     async def get_session(self):

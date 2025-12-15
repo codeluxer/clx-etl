@@ -14,6 +14,13 @@ from exchanges.okx import OkxPerpClient
 from .constants import COINS
 from .utils import get_symbols
 
+ALL_CLIENTS: dict[str, BaseClient] = {
+    "binance": BinancePerpClient,
+    "bitget": BitgetPerpClient,
+    "bybit": BybitPerpClient,
+    "okx": OkxPerpClient,
+}
+
 
 @task(
     name="update-long-short-ratio-task",
@@ -23,12 +30,7 @@ async def update_long_short_ratio(client_name: str, interval: Literal["5m", "1h"
     logger.info(f"[{client_name}] Start")
     try:
         # 动态加载 client
-        client: BaseClient = {
-            "binance": BinancePerpClient,
-            "bitget": BitgetPerpClient,
-            "bybit": BybitPerpClient,
-            "okx": OkxPerpClient,
-        }[client_name](logger)
+        client = ALL_CLIENTS[client_name](logger)
 
         symbols = await get_symbols(client_name, coins, "USDT", InstType.PERP)
 

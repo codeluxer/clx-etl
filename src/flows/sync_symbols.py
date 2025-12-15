@@ -1,6 +1,6 @@
 import asyncio
 
-from prefect import flow, task
+from prefect import flow, get_run_logger, task
 
 from exchanges.aster import AsterPerpClient, AsterSpotClient
 from exchanges.binance import BinancePerpClient, BinanceSpotClient
@@ -13,7 +13,6 @@ from exchanges.kraken import KrakenSpotClient
 from exchanges.mexc import MexcPerpClient, MexcSpotClient
 from exchanges.okx import OkxPerpClient, OkxSpotClient
 from exchanges.woox import WooxPerpClient, WooxSpotClient
-from utils.logger import logger as _logger
 
 CLIENT_REGISTRY = {
     "aster_spot": AsterSpotClient,
@@ -41,13 +40,13 @@ CLIENT_REGISTRY = {
 
 @task(name="update-symbols-task", retries=2, retry_delay_seconds=3)
 async def update_symbols_task(client_name: str):
-    logger = _logger.bind(job_id=f"SYMBOLS-{client_name}")
+    logger = get_run_logger()
+    logger.info(f"Start update symbols for {client_name}")
 
     client_class = CLIENT_REGISTRY[client_name]
     client = client_class(logger)
 
     await client.update_all_symbols()
-    return f"{client_name} symbols ok"
 
 
 @flow(name="sync-symbols", timeout_seconds=1800)
