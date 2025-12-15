@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from databases.doris import get_doris
 from databases.mysql import sync_engine
 from databases.mysql.models import ClxSymbol, ExchangeInfo, ExchangeSymbol
-from exchanges._base_ import BaseClient
 from exchanges.aster import AsterPerpClient
 from exchanges.binance import BinancePerpClient, BinanceSpotClient
 from exchanges.bitget import BitgetPerpClient, BitgetSpotClient
@@ -84,16 +83,18 @@ CLIENT_MAP = {(client.exchange_name, client.inst_type.value): client for client 
 
 
 @task(name="update-kline-task", retries=2, retry_delay_seconds=3)
-async def update_kline(client: BaseClient, symbols: [ExchangeSymbol], interval: Literal["1m", "1h", "1d"]):
+async def update_kline(
+    exchange_name: str, inst_type: int, symbols: [ExchangeSymbol], interval: Literal["1m", "1h", "1d"]
+):
     logger = get_run_logger()
     for i in symbols:
         try:
-            logger.info(f"Start update kline {interval} for {client.exchange_name} {i}")
+            logger.info(f"Start update kline {interval} for {exchange_name} {inst_type} {i}")
             last_ts = await get_last_kline_timestamp(interval, i)
             last_ts = last_ts or 1735689600000
-            await client.update_kline(i.symbol, interval, last_ts)
+            await CLIENT_MAP[(exchange_name, inst_type)](logger).update_kline(i.symbol, interval, last_ts)
         except Exception as e:
-            logger.error(f"Failed to update kline for {client.exchange_name} {i}: {e}")
+            logger.error(f"Failed to update kline for {exchange_name} {inst_type} {i}: {e}")
             traceback.print_exc()
             await asyncio.sleep(1)
 
@@ -107,11 +108,10 @@ async def sync_klines(interval):
         symbols_map.setdefault((exchange_map[s.exchange_id], s.inst_type), []).append(s)
 
     tasks = []
-    for key, symbols in symbols_map.items():
-        logger.info(f"Start sync klines {interval} for {key}: {[i.symbol for i in symbols]}")
+    for (exchange_name, inst_type), symbols in symbols_map.items():
+        logger.info(f"Start sync klines {interval} for {exchange_name} {inst_type}: {[i.symbol for i in symbols]}")
 
-        client = CLIENT_MAP[key](logger)
-        tasks.append(update_kline(client, symbols, interval))
+        tasks.append(update_kline(exchange_name, inst_type, symbols, interval))
 
     await asyncio.gather(*tasks)
 
