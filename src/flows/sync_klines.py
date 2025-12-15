@@ -2,14 +2,13 @@ import asyncio
 import traceback
 from typing import Literal
 
-from models import ClxSymbol, ExchangeInfo
 from prefect import flow, get_run_logger, task
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from databases.doris import get_doris
 from databases.mysql import sync_engine
-from databases.mysql.models import ExchangeSymbol
+from databases.mysql.models import ClxSymbol, ExchangeInfo, ExchangeSymbol
 from exchanges._base_ import BaseClient
 from exchanges.aster import AsterPerpClient
 from exchanges.binance import BinancePerpClient, BinanceSpotClient
