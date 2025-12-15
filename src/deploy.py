@@ -71,6 +71,7 @@ if __name__ == "__main__":
             description="同步交易所交易对",
             cron="0 0 * * *",
             entrypoint_type=EntrypointType.MODULE_PATH,
+            concurrency_limit=1,
         ),
         # 每 5 分钟，第 5 秒执行
         sync_long_short_ratio_5m.to_deployment(
@@ -79,6 +80,7 @@ if __name__ == "__main__":
             description="同步交易所多空比[5min]",
             schedule=cron_seconds_schedule([5], minutes="*/5"),
             entrypoint_type=EntrypointType.MODULE_PATH,
+            concurrency_limit=1,
         ),
         # 每小时 0 分，第 5 和 30 秒执行
         sync_long_short_ratio_1h.to_deployment(
@@ -87,6 +89,7 @@ if __name__ == "__main__":
             description="同步交易所多空比[1h]",
             schedule=cron_seconds_schedule([5, 30], minutes="0"),
             entrypoint_type=EntrypointType.MODULE_PATH,
+            concurrency_limit=1,
         ),
         # 每天 00:00 的第 5 和 30 秒执行
         sync_long_short_ratio_1d.to_deployment(
@@ -95,6 +98,7 @@ if __name__ == "__main__":
             description="同步交易所多空比[1d]",
             schedule=cron_seconds_schedule([5, 30], minutes="0", hours="0"),
             entrypoint_type=EntrypointType.MODULE_PATH,
+            concurrency_limit=1,
         ),
         # 每分钟 0,1,5,30 分钟，第 5 秒执行
         sync_funding_rate.to_deployment(
@@ -103,6 +107,7 @@ if __name__ == "__main__":
             description="同步交易所资金费率",
             schedule=cron_seconds_schedule([5], minutes="0,1,5,30"),
             entrypoint_type=EntrypointType.MODULE_PATH,
+            concurrency_limit=1,
         ),
         # onchain_large_transfer: 每 30 秒执行
         sync_onchain_large_transfer.to_deployment(
@@ -111,6 +116,7 @@ if __name__ == "__main__":
             description="同步链上大额转出",
             schedule=IntervalSchedule(interval=30),
             entrypoint_type=EntrypointType.MODULE_PATH,
+            concurrency_limit=1,
         ),
         # cex inflow: 每小时 0 分，第 5 和 30 秒执行
         sync_cex_inflow.to_deployment(
@@ -119,6 +125,7 @@ if __name__ == "__main__":
             description="同步CEX资金流入",
             schedule=cron_seconds_schedule([5, 30], minutes="0"),
             entrypoint_type=EntrypointType.MODULE_PATH,
+            concurrency_limit=1,
         ),
         sync_macro_indicators.to_deployment(
             name=f"{ENV}-sync-macro-indicators",
@@ -126,6 +133,7 @@ if __name__ == "__main__":
             description="同步宏观指标",
             schedule=IntervalSchedule(interval=30),
             entrypoint_type=EntrypointType.MODULE_PATH,
+            concurrency_limit=1,
         ),
         sync_kalshi_flow.to_deployment(
             name=f"{ENV}-sync-kalshi",
@@ -133,6 +141,7 @@ if __name__ == "__main__":
             description="同步 Kalshi 数据",
             schedule=IntervalSchedule(interval=60),
             entrypoint_type=EntrypointType.MODULE_PATH,
+            concurrency_limit=1,
         ),
         sync_klines_1m.to_deployment(
             name=f"{ENV}-sync-klines-1m",
@@ -140,6 +149,7 @@ if __name__ == "__main__":
             description="同步交易所 Kline[1m]",
             schedule=CronSchedule(cron="1 * * * *"),
             entrypoint_type=EntrypointType.MODULE_PATH,
+            concurrency_limit=1,
         ),
     ]
 

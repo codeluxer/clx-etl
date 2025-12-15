@@ -50,7 +50,7 @@ async def update_symbols_task(client_name: str):
     return f"{client_name} symbols ok"
 
 
-@flow(name="sync-symbols")
+@flow(name="sync-symbols", timeout_seconds=1800)
 async def sync_symbols():
     tasks = []
     for client_name in CLIENT_REGISTRY:

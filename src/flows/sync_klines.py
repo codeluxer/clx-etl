@@ -80,7 +80,7 @@ HANDLE_CLIENT = [
     WooxSpotClient,
 ]
 
-CLIENT_MAP = {(client.exchange_name, client.inst_type): client for client in HANDLE_CLIENT}
+CLIENT_MAP = {(client.exchange_name, client.inst_type.value): client for client in HANDLE_CLIENT}
 
 
 @task(name="update-kline-task", retries=2, retry_delay_seconds=3)
