@@ -87,6 +87,7 @@ async def update_kline(
     exchange_name: str, inst_type: int, symbols: [ExchangeSymbol], interval: Literal["1m", "1h", "1d"]
 ):
     logger = get_run_logger()
+
     for i in symbols:
         try:
             logger.info(f"Start update kline {interval} for {exchange_name} {inst_type} {i}")
@@ -109,7 +110,11 @@ async def sync_klines(interval):
 
     tasks = []
     for (exchange_name, inst_type), symbols in symbols_map.items():
-        logger.info(f"Start sync klines {interval} for {exchange_name} {inst_type}: {[i.symbol for i in symbols]}")
+        if (exchange_name, inst_type) not in CLIENT_MAP:
+            logger.warning(
+                f"Skip sync klines {interval} for {exchange_name} {inst_type}: {[i.symbol for i in symbols]}"
+            )
+            continue
 
         tasks.append(update_kline(exchange_name, inst_type, symbols, interval))
 
