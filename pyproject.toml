@@ -21,6 +21,7 @@ dependencies = [
     "yfinance>=0.2.66",
     "pycryptodome>=3.23.0",
     "prefect>=3.6.4",
+    "boto3>=1.42.12",
 ]
 
 [project.optional-dependencies]

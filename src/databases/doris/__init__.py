@@ -66,7 +66,10 @@ class DorisAsyncDB:
 
 class DorisStreamLoader:
     def __init__(self):
-        self.logger = get_run_logger()
+        try:
+            self.logger = get_run_logger()
+        except Exception:
+            self.logger = _logger
         self.host = os.environ.get("DORIS_HOST")
         self.http_port = os.environ.get("DORIS_HTTP_PORT", "8030")  # FE HTTP PORT
         self.user = os.environ.get("DORIS_USER")
@@ -184,7 +187,7 @@ class DorisStreamLoader:
         # -------------------
         # 2. 处理 list[list]
         # -------------------
-        elif isinstance(rows, list) and rows and isinstance(rows[0], list):
+        elif isinstance(rows, (list, tuple)) and rows and isinstance(rows[0], (list, tuple)):
             if column_names is None:
                 raise ValueError("column_names is required when rows is list[list]")
 

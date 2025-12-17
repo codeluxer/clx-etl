@@ -16,6 +16,8 @@ from flows.sync_symbols import sync_symbols
 from prefect import deploy
 from prefect.client.schemas.schedules import CronSchedule, IntervalSchedule, RRuleSchedule
 from prefect.types.entrypoint import EntrypointType
+from system_utils.check_market_snapshot_integrity import check_market_snapshot_integrity
+from system_utils.doris_partition_health_check import doris_partition_health_check
 
 ENV = os.getenv("ENV")
 IS_PROD = ENV == "production"
@@ -149,6 +151,22 @@ if __name__ == "__main__":
             tags=[ENV],
             description="同步交易所 Kline[1m]",
             schedule=CronSchedule(cron="1 * * * *") if IS_PROD else None,
+            entrypoint_type=EntrypointType.MODULE_PATH,
+            concurrency_limit=1,
+        ),
+        doris_partition_health_check.to_deployment(
+            name=f"{ENV}-doris-partition-health-check",
+            tags=[ENV],
+            description="检查 Doris 分区健康",
+            schedule=None,
+            entrypoint_type=EntrypointType.MODULE_PATH,
+            concurrency_limit=1,
+        ),
+        check_market_snapshot_integrity.to_deployment(
+            name=f"{ENV}-check-market-snapshot-integrity",
+            tags=[ENV],
+            description="检查市场快照完整性",
+            schedule=None,
             entrypoint_type=EntrypointType.MODULE_PATH,
             concurrency_limit=1,
         ),
