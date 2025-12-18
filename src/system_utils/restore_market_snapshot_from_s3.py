@@ -100,14 +100,13 @@ def insert_batch(cur, batch):
 # Main restore logic
 # =====================
 
-stream_loader = DorisStreamLoader()
-
 
 async def restore_from_s3(symbol, exchange_id, inst_type, day, hour, logger):
     """
     day: datetime.date
     hour: int (0-23)
     """
+    stream_loader = DorisStreamLoader()
 
     year = day.year
     month = f"{day.month:02d}"
