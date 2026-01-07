@@ -27,7 +27,7 @@ steps:
       - build-staging
     image: prefecthq/prefect:3.6.4-python3.13
     environment:
-      PREFECT_API_URL: http://10.10.10.101:4201/api
+      PREFECT_API_URL: http://10.10.10.137:4201/api
       ENV: staging
       
       REGISTRY: 10.10.10.112:5000
